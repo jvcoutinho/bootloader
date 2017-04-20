@@ -14,20 +14,17 @@ pos7 db '-'
 pos8 db '-'
 pos9 db '-'
 
-;Tabuleiro há 3 turnos atrás.
-pos1A db '-'
-pos2A db '-'
-pos3A db '-'
-pos4A db '-'
-pos5A db '-'
-pos6A db '-'
-pos7A db '-'
-pos8A db '-'
-pos9A db '-'
+;Tabuleiros em todos os turnos.
+tabuleiro1 db '---------'
+tabuleiro2 db '---------'
+tabuleiro3 db '---------'
+tabuleiro4 db '---------'
 
 turno db 1
 pontos1 db 0
 pontos2 db 0
+
+qntturnos db 0 ;Isso aqui vai ser usado pra atualizar as peças antigas em Retroceder.
 
 Hacking db 'Iniciando o hack!', 13
 Recalling db 'Voce ja sentiu a sensacao de dejavu?', 13
@@ -51,7 +48,7 @@ start:
 	
 	call printTabuleiro
 
-	turno1:
+	turno1:		
 		mov ah, 0
 		int 16h
 
@@ -109,6 +106,7 @@ start:
 		int 10h
 
 		call TURNO
+
 		mov byte[pos1], al
 		call PUTCHAR
 	
@@ -143,6 +141,7 @@ start:
 		int 10h
 		
 		call TURNO
+
 		mov byte[pos2], al
 		call PUTCHAR	
 
@@ -183,6 +182,7 @@ start:
 		int 10h
 		
 		call TURNO
+
 		mov byte[pos3], al
 		call PUTCHAR
 
@@ -217,6 +217,7 @@ start:
 		int 10h
 		
 		call TURNO
+
 		mov byte[pos4], al
 		call PUTCHAR
 
@@ -253,6 +254,7 @@ start:
 		int 10h
 		
 		call TURNO
+
 		mov byte[pos5], al
 		call PUTCHAR
 
@@ -302,6 +304,7 @@ start:
 		int 10h
 		
 		call TURNO
+
 		mov byte[pos6], al
 		call PUTCHAR
 
@@ -342,6 +345,7 @@ start:
 		int 10h
 		
 		call TURNO
+
 		mov byte[pos7], al
 		call PUTCHAR
 
@@ -376,6 +380,7 @@ start:
 		int 10h
 		
 		call TURNO
+
 		mov byte[pos8], al
 		call PUTCHAR
 
@@ -416,6 +421,7 @@ start:
 		int 10h
 		
 		call TURNO
+
 		mov byte[pos9], al
 		call PUTCHAR
 
@@ -433,8 +439,12 @@ start:
 	
 	termino:
 
+	call RECALL_Tabuleiros ;Atualizando os tabuleiros.	
+
 	cmp ch, 2 ;Estou no fim do turno pós-ativação de EMP.
 	je EMP_volta
+
+	mov ch, 0 ;Recall finalizado.
  	
 	call winCheck
 	cmp dh, 1
@@ -498,6 +508,7 @@ start:
 		
 
 	 jmp termino
+
 	Recall:
 		mov al, byte[turno]
 		cmp al, 1 ; X conjurou.
@@ -505,16 +516,16 @@ start:
 	
 		; O conjurou.
 		mov dl, byte[pontos2]
-		sub dl, 2
-		cmp dl, 0
-		jl turno1 ; -O- não tem pelo menos 2 pontos para conjurar Retroceder.
+		sub dl, 0
+		cmp dl, 1
+		jl turno1 ; -O- não tem pelo menos 1 ponto para conjurar Retroceder.
 
 		jmp recallExec
 
 		xVerify2:
 		mov dl, byte[pontos1]
-		sub dl, 3
-		cmp dl, 0
+		sub dl, 0
+		cmp dl, 1
 		jl turno1 ; -X- não tem pelo menos 3 pontos para conjurar Retroceder.
 
 		recallExec:
@@ -539,11 +550,16 @@ start:
 		mov si, Recalling
 		call printString
 
-		;Retroceder: o tabuleiro volta ao seu estado três turnos atrás.
-		;falta implementar um contador pra os turnos, aí é só colocar posx em posxA sempre a partir do 3º.
-		;recall coloca posxA em posx para todas as peças e atualiza o tabuleiro.
+		;Retroceder: 
+		mov ch, 1 ;Recall ativado!
+		;1º passo: o tabuleiro volta ao seu estado 3 turnos atrás (o tabuleiro 1 contém isso).
+		call RECALL_1
 		
+		;2º passo: o tabuleiro é atualizado.
+		call atualizaTabuleiro
 
+		;OBS.: o jogador que conjurou ainda tem a vez, então TURNO não é chamada.
+		
 	jmp termino
 
 	EMP: 
@@ -554,7 +570,7 @@ start:
 		; O conjurou.
 		mov dl, byte[pontos2]
 		sub dl, 0
-		cmp dl, 0
+		cmp dl, 2
 		jl turno1 ; -O- não tem pelo menos 2 pontos para conjurar Pulso Eletromagnético.
 
 		jmp EMPExec
@@ -562,7 +578,7 @@ start:
 		xVerify3:
 		mov dl, byte[pontos1]
 		sub dl, 0
-		cmp dl, 0
+		cmp dl, 3
 		jl turno1 ; -X- não tem pelo menos 3 pontos para conjurar Pulso Eletromagnético.
 
 		EMPExec:
@@ -713,6 +729,105 @@ ret
 
 ;HABILIDADES
 
+RECALL_Tabuleiros:
+
+	mov bx, 0
+
+	;Tabuleiro 1 recebe o 2.
+	tabuleiro2_1:
+		mov al, byte[tabuleiro2+bx]
+		mov byte[tabuleiro1+bx], al
+		
+		inc bx
+		cmp bx, 8
+		jng tabuleiro2_1
+
+	mov bx, 0
+
+	;Tabuleiro 2 recebe o 3.
+	tabuleiro3_2:
+		mov al, byte[tabuleiro3+bx]
+		mov byte[tabuleiro2+bx], al
+		
+		inc bx
+		cmp bx, 8
+		jng tabuleiro3_2
+	
+	mov bx, 0
+
+	;Tabuleiro 3 recebe o 4.
+	tabuleiro4_3:
+		mov al, byte[tabuleiro4+bx]
+		mov byte[tabuleiro3+bx], al
+		
+		inc bx
+		cmp bx, 8
+		jng tabuleiro4_3
+
+	mov bx, 0
+
+	;Tabuleiro 4 recebe a configuração atual.
+	tabuleiroatual_4:
+		mov al, byte[pos1]
+		mov byte[tabuleiro4+0], al
+		
+		mov al, byte[pos2]
+		mov byte[tabuleiro4+1], al
+
+		mov al, byte[pos3]
+		mov byte[tabuleiro4+2], al
+
+		mov al, byte[pos4]
+		mov byte[tabuleiro4+3], al
+
+		mov al, byte[pos5]
+		mov byte[tabuleiro4+4], al
+
+		mov al, byte[pos6]
+		mov byte[tabuleiro4+5], al
+
+		mov al, byte[pos7]
+		mov byte[tabuleiro4+6], al
+
+		mov al, byte[pos8]
+		mov byte[tabuleiro4+7], al
+
+		mov al, byte[pos9]
+		mov byte[tabuleiro4+8], al
+
+ret
+
+RECALL_1:
+	;Como a configuração de tabuleiro 1 vai ser a atual, todos os tabuleiros têm que ser atualizados.
+
+	mov al, byte[tabuleiro1+0]
+	mov byte[pos1], al
+
+	mov al, byte[tabuleiro1+1]
+	mov byte[pos2], al
+
+	mov al, byte[tabuleiro1+2]
+	mov byte[pos3], al
+
+	mov al, byte[tabuleiro1+3]
+	mov byte[pos4], al
+
+	mov al, byte[tabuleiro1+4]
+	mov byte[pos5], al
+
+	mov al, byte[tabuleiro1+5]
+	mov byte[pos6], al
+
+	mov al, byte[tabuleiro1+6]
+	mov byte[pos7], al
+
+	mov al, byte[tabuleiro1+7]
+	mov byte[pos8], al
+
+	mov al, byte[tabuleiro1+8]
+	mov byte[pos9], al	
+ret
+
 EMP_troca:
 	mov al, byte[pos1]
 	call change
@@ -787,8 +902,11 @@ TURNO:
 
 PUTCHAR:
 	cmp al, '-'
-	je saindo
+	jne printaAlgo
 
+	mov al, ' '	
+
+	printaAlgo:
 	cmp ch, 2 ;PEM foi ativado!
 	je PEM_invisivel
 
@@ -802,7 +920,7 @@ PUTCHAR:
 	mov ah, 0xe
 	mov bh, 0
 	int 10h
-saindo:
+
 ret
 
 ACRESCENTA:
