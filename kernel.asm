@@ -1,6 +1,6 @@
 ;Jogo
 
-org 0x8600
+org 0x7E00 ;0x8600
 jmp 0x0000:start
 
 ;Tabuleiro
@@ -32,6 +32,7 @@ pontos2 db 0
 Hacking db 'Iniciando o hack!', 13
 Recalling db 'Voce ja sentiu a sensacao de dejavu?', 13
 EMPing db 'Apagando as luzes!', 13
+;neutra db '                                    ', 13
 
 start:
 
@@ -92,10 +93,14 @@ start:
 
 
 	put1: 
+		cmp ch, 2 ;Estou no turno pós-ativação de EMP. A restrição não vale.
+		je sai_restricao1
+
 		mov al, '-'
 		cmp al, byte[pos1]
 		jne turno1 ;Posição já ocupada.
 		
+		sai_restricao1:
 		;Setando o cursor.
 		mov ah, 02h
 		mov bh, 00h
@@ -122,10 +127,14 @@ start:
 	jmp termino		
 	
 	put2: 
+		cmp ch, 2 ;Estou no turno pós-ativação de EMP. A restrição não vale.
+		je sai_restricao2
+		
 		mov al, '-'
 		cmp al, byte[pos2]
 		jne turno1
 
+		sai_restricao2:
 		;Setando o cursor.
 		mov ah, 02h
 		mov bh, 00h
@@ -158,10 +167,14 @@ start:
 	jmp termino		
 	
 	put3: 
+		cmp ch, 2 ;Estou no turno pós-ativação de EMP. A restrição não vale.
+		je sai_restricao3
+
 		mov al, '-'
 		cmp al, byte[pos3]
 		jne turno1
 
+		sai_restricao3:
 		;Setando o cursor.
 		mov ah, 02h
 		mov bh, 00h
@@ -188,10 +201,14 @@ start:
 	jmp termino	
 
 	put4: 
+		cmp ch, 2 ;Estou no turno pós-ativação de EMP. A restrição não vale.
+		je sai_restricao4
+
 		mov al, '-'
 		cmp al, byte[pos4]
 		jne turno1
 
+		sai_restricao4:
 		;Setando o cursor.
 		mov ah, 02h
 		mov bh, 00h
@@ -269,10 +286,14 @@ start:
 	jmp termino		
 	
 	put6: 
+		cmp ch, 2 ;Estou no turno pós-ativação de EMP. A restrição não vale.
+		je sai_restricao6
+
 		mov al, '-'
 		cmp al, byte[pos6]
 		jne turno1
 
+		sai_restricao6:
 		;Setando o cursor.
 		mov ah, 02h
 		mov bh, 00h
@@ -304,11 +325,15 @@ start:
 	
 	jmp termino		
 	
-	put7: 
+	put7:
+		cmp ch, 2 ;Estou no turno pós-ativação de EMP. A restrição não vale.
+		je sai_restricao7
+ 
 		mov al, '-'
 		cmp al, byte[pos7]
 		jne turno1
 		
+		sai_restricao7:
 		;Setando o cursor.
 		mov ah, 02h
 		mov bh, 00h
@@ -335,10 +360,14 @@ start:
 	jmp termino		
 	
 	put8:
+		cmp ch, 2 ;Estou no turno pós-ativação de EMP. A restrição não vale.
+		je sai_restricao8
+
 		mov al, '-'
 		cmp al, byte[pos8]
 		jne turno1
 
+		sai_restricao8:
 		;Setando o cursor.
 		mov ah, 02h
 		mov bh, 00h
@@ -371,10 +400,14 @@ start:
 	jmp termino		
 	
 	put9:
+		cmp ch, 2 ;Estou no turno pós-ativação de EMP. A restrição não vale.
+		je sai_restricao9
+
 		mov al, '-'
 		cmp al, byte[pos9]
 		jne turno1
 
+		sai_restricao9:
 		;Setando o cursor.
 		mov ah, 02h
 		mov bh, 00h
@@ -399,6 +432,9 @@ start:
 		acrescenta9: call ACRESCENTA		
 	
 	termino:
+
+	cmp ch, 2 ;Estou no fim do turno pós-ativação de EMP.
+	je EMP_volta
  	
 	call winCheck
 	cmp dh, 1
@@ -517,7 +553,7 @@ start:
 	
 		; O conjurou.
 		mov dl, byte[pontos2]
-		sub dl, 2
+		sub dl, 0
 		cmp dl, 0
 		jl turno1 ; -O- não tem pelo menos 2 pontos para conjurar Pulso Eletromagnético.
 
@@ -525,7 +561,7 @@ start:
 
 		xVerify3:
 		mov dl, byte[pontos1]
-		sub dl, 3
+		sub dl, 0
 		cmp dl, 0
 		jl turno1 ; -X- não tem pelo menos 3 pontos para conjurar Pulso Eletromagnético.
 
@@ -552,10 +588,25 @@ start:
 		call printString
 
 		;Pulso Eletromagnético:
-		;1º passo: a fronteira do tabuleiro "é apagada" (fica só invisível, mas o oponente pode colocar uma peça em qualquer lugar). 	
+
+		mov ch, 2 ;EMP ativado!.
+		;1º passo: a fronteira do tabuleiro "é apagada" (fica só invisível, mas o oponente pode colocar uma peça em qualquer lugar).
+		call atualizaTabuleiro 
 		;2º passo: as peças na fronteira são trocadas (X vira O, O vira X).
-		;3º passo: as peças voltam a ser visíveis e o ritmo segue.
-		;O 1º passo dura o próximo turno inteiro, então precisamos trocar o turno (chamar TURNO) e fazer uma chamada de turno1 aqui (colocando ret nele).
+		call EMP_troca
+
+		;3º passo: esse turno é encerrado e um turno "às escuras" é iniciado.
+		call TURNO
+		jmp turno1
+
+		EMP_volta:
+		;4º passo: no fim do turno seguinte, as peças voltam a ser visíveis e o ritmo segue.
+		mov ch, 0 ;EMP finalizado.
+		mov ah, 0xb
+		mov bh, 0
+		mov bl, 7
+		int 10h
+		call atualizaTabuleiro
 
 	call TURNO
 	jmp termino 
@@ -570,6 +621,147 @@ atualizaPontos:
 	xPontos:
 	mov byte[pontos1], dl
 ret
+
+atualizaTabuleiro:
+
+	;Posição 1.
+	mov ah, 02h
+	mov bh, 00h
+	mov dh, 7
+	mov dl, 25
+	int 10h
+	mov al, byte[pos1]
+	call PUTCHAR
+
+	;Posição 2.
+	mov ah, 02h
+	mov bh, 00h
+	mov dh, 7
+	mov dl, 37
+	int 10h
+	mov al, byte[pos2]
+	call PUTCHAR
+
+	;Posição 3.
+	mov ah, 02h
+	mov bh, 00h
+	mov dh, 7
+	mov dl, 49
+	int 10h
+	mov al, byte[pos3]
+	call PUTCHAR
+
+	;Posição 4.
+	mov ah, 02h
+	mov bh, 00h
+	mov dh, 12
+	mov dl, 25
+	int 10h
+	mov al, byte[pos4]
+	call PUTCHAR
+
+	cmp ch, 2 ;PEM foi ativado!
+	je pula5
+
+	;Posição 5.
+	mov ah, 02h
+	mov bh, 00h
+	mov dh, 12
+	mov dl, 37
+	int 10h
+	mov al, byte[pos5]
+	call PUTCHAR
+
+	pula5:
+	;Posição 6.
+	mov ah, 02h
+	mov bh, 00h
+	mov dh, 12
+	mov dl, 49
+	int 10h
+	mov al, byte[pos6]
+	call PUTCHAR
+
+	;Posição 7.
+	mov ah, 02h
+	mov bh, 00h
+	mov dh, 17
+	mov dl, 25
+	int 10h
+	mov al, byte[pos7]
+	call PUTCHAR
+
+	;Posição 8.
+	mov ah, 02h
+	mov bh, 00h
+	mov dh, 17
+	mov dl, 37
+	int 10h
+	mov al, byte[pos8]
+	call PUTCHAR
+
+	;Posição 9.
+	mov ah, 02h
+	mov bh, 00h
+	mov dh, 17
+	mov dl, 49
+	int 10h
+	mov al, byte[pos9]
+	call PUTCHAR
+	
+ret
+
+;HABILIDADES
+
+EMP_troca:
+	mov al, byte[pos1]
+	call change
+	mov byte[pos1], al
+
+	mov al, byte[pos2]
+	call change
+	mov byte[pos2], al
+
+	mov al, byte[pos3]
+	call change
+	mov byte[pos3], al
+
+	mov al, byte[pos4]
+	call change
+	mov byte[pos4], al
+
+	mov al, byte[pos6]
+	call change
+	mov byte[pos6], al
+
+	mov al, byte[pos7]
+	call change
+	mov byte[pos7], al
+
+	mov al, byte[pos8]
+	call change
+	mov byte[pos8], al
+
+	mov al, byte[pos9]
+	call change
+	mov byte[pos9], al
+ret
+
+change:
+	cmp al, '-'
+	je saindo2
+
+	cmp al, 'X'
+	je changetoO
+
+	mov al, 'X'
+	ret	
+
+	changetoO:
+	mov al, 'O'
+
+saindo2:
+	ret
 
 printString:
 	lodsb
@@ -594,10 +786,23 @@ TURNO:
 	ret
 
 PUTCHAR:
+	cmp al, '-'
+	je saindo
+
+	cmp ch, 2 ;PEM foi ativado!
+	je PEM_invisivel
+
+	mov bl, 0xf
+	jmp PUTCHARExec	
+
+	PEM_invisivel: ;As peças ficarão pretas.
+	mov bl, 0
+
+	PUTCHARExec:
 	mov ah, 0xe
 	mov bh, 0
-	mov bl, 0xf
 	int 10h
+saindo:
 ret
 
 ACRESCENTA:
@@ -845,5 +1050,6 @@ ret
 ;ret
 
 exit:
+
 
 
